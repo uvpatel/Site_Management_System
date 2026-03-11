@@ -28,7 +28,7 @@ const Workforce = () => {
   });
 
   // Check if user can manage workforce (Admin and Site Engineer only)
-  const canManageWorkforce = ['Admin', 'Site_Engineer'].includes(user?.role);
+  const canManageWorkforce = ['Admin', 'Project_Manager', 'Site_Engineer'].includes(user?.role);
 
   // Render access denied for other roles
   if (!canManageWorkforce) {
@@ -111,7 +111,7 @@ const Workforce = () => {
       key: 'base_rate',
       label: 'Base Rate',
       render: (value, row) =>
-        `$${value}/${row.rate_type === 'Daily' ? 'day' : 'hr'}`,
+        `₹${value}/${row.rate_type === 'Daily' ? 'day' : 'hr'}`,
     },
     {
       key: 'id',

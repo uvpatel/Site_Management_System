@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import FormInput from '../components/auth/FormInput';
 import Toast from '../components/auth/Toast';
 import { validateFormField } from '../utils/validation';
-import { Loader, Shield, Users, Hammer, Package } from 'lucide-react';
+import { Loader, Shield, Users, Hammer, HardHat } from 'lucide-react';
 
 const ROLES = [
   {
@@ -28,16 +28,16 @@ const ROLES = [
   },
   {
     id: 'Site_Engineer',
-    label: 'Site Engineer',
-    description: 'Manage tasks & workforce',
+    label: 'Site Manager',
+    description: 'Manage workers, tasks & inventory',
     icon: Hammer,
     color: 'bg-amber-500/10 border-amber-500',
   },
   {
-    id: 'Storekeeper',
-    label: 'Storekeeper',
-    description: 'Manage inventory',
-    icon: Package,
+    id: 'Worker',
+    label: 'Worker',
+    description: 'View attendance & salary',
+    icon: HardHat,
     color: 'bg-emerald-500/10 border-emerald-500',
   },
 ];
@@ -98,16 +98,13 @@ export default function AuthLogin() {
     const result = await login(formData.email, formData.password, formData.rememberMe, formData.role);
 
     if (result.success) {
-      // Update user role
-      const updatedUser = { ...result.user, role: formData.role };
-      
       setToast({
         type: 'success',
         message: `Login successful as ${formData.role.replace('_', ' ')}!`,
       });
 
       setTimeout(() => {
-        navigate('/');
+        navigate(formData.role === 'Worker' ? '/worker' : '/');
       }, 1000);
     } else {
       setToast({

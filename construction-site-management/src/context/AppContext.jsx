@@ -18,6 +18,7 @@ import {
   mockAttendance,
   mockProjectMembers,
   mockNotifications,
+  mockLeaveApplications,
 } from '../data/mockData';
 
 export const AppContext = createContext();
@@ -46,6 +47,7 @@ export const AppProvider = ({ children }) => {
   const [attendanceRecords, setAttendanceRecords] = useState(mockAttendance);
   const [projectMembers, setProjectMembers] = useState(mockProjectMembers);
   const [notifications, setNotifications] = useState(mockNotifications);
+  const [leaveApplications, setLeaveApplications] = useState(mockLeaveApplications);
 
   const pushNotification = useCallback((notification) => {
     setNotifications((prev) => [
@@ -500,6 +502,101 @@ export const AppProvider = ({ children }) => {
     setProjectMembers((prev) => prev.filter((member) => member.id !== memberId));
   }, []);
 
+  // Worker management
+  const addWorker = useCallback((worker) => {
+    const newWorker = { id: makeId('worker'), attendance: [], salary: 0, ...worker };
+    setWorkers((prev) => [...prev, newWorker]);
+    return newWorker;
+  }, []);
+
+  const updateWorker = useCallback((workerId, updates) => {
+    setWorkers((prev) => prev.map((w) => (w.id === workerId ? { ...w, ...updates } : w)));
+  }, []);
+
+  const deleteWorker = useCallback((workerId) => {
+    setWorkers((prev) => prev.filter((w) => w.id !== workerId));
+  }, []);
+
+  // Inventory stock actions
+  const addInventoryItem = useCallback((item) => {
+    const newItem = { id: makeId('inv'), current_stock: 0, min_stock_qty: 0, ...item };
+    setInventory((prev) => [...prev, newItem]);
+    return newItem;
+  }, []);
+
+  const addInventoryStock = useCallback((itemId, quantity) => {
+    setInventory((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, current_stock: item.current_stock + Number(quantity) } : item
+      )
+    );
+  }, []);
+
+  // Leave application actions
+  const applyLeave = useCallback((payload) => {
+    const application = {
+      id: makeId('leave'),
+      status: 'Pending',
+      applied_at: new Date().toISOString().slice(0, 10),
+      reviewed_by: null,
+      reviewed_at: null,
+      ...payload,
+    };
+    setLeaveApplications((prev) => [...prev, application]);
+    return application;
+  }, []);
+
+  const approveLeave = useCallback((leaveId, reviewerId) => {
+    setLeaveApplications((prev) =>
+      prev.map((leave) =>
+        leave.id === leaveId
+          ? { ...leave, status: 'Approved', reviewed_by: reviewerId, reviewed_at: new Date().toISOString().slice(0, 10) }
+          : leave
+      )
+    );
+  }, []);
+
+  const rejectLeave = useCallback((leaveId, reviewerId, rejection_reason = '') => {
+    setLeaveApplications((prev) =>
+      prev.map((leave) =>
+        leave.id === leaveId
+          ? { ...leave, status: 'Rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString().slice(0, 10), rejection_reason }
+          : leave
+      )
+    );
+  }, []);
+
+  // Salary calculation helper
+  const calculateSalary = useCallback((workerId, fromDate, toDate) => {
+    const records = attendanceRecords.filter((entry) => {
+      if (entry.workerId !== workerId) return false;
+      if (fromDate && entry.date < fromDate) return false;
+      if (toDate && entry.date > toDate) return false;
+      return true;
+    });
+
+    const totalDaysWorked = records.filter((r) => r.status === 'Present').length;
+    const halfDays = records.filter((r) => r.status === 'Half Day').length;
+    const totalHours = records.reduce((sum, r) => sum + Number(r.hours_worked || 0), 0);
+    const totalSalary = records.reduce((sum, r) => sum + Number(r.labor_cost || 0), 0);
+    const absentDays = records.filter((r) => r.status === 'Absent').length;
+
+    const worker = workers.find((w) => w.id === workerId);
+    const absenceDeduction = worker
+      ? absentDays * (worker.rate_type === 'Daily' ? worker.base_rate : worker.base_rate * 8)
+      : 0;
+
+    return {
+      totalDaysWorked,
+      halfDays,
+      totalHours,
+      totalSalary,
+      absentDays,
+      absenceDeduction,
+      netSalary: totalSalary - absenceDeduction,
+    };
+  }, [attendanceRecords, workers]);
+
   // Notification actions
   const markNotificationRead = useCallback((id) => {
     setNotifications((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)));
@@ -589,6 +686,7 @@ export const AppProvider = ({ children }) => {
     workerAssignments,
     attendanceRecords,
     projectMembers,
+    leaveApplications,
     notifications: allNotifications,
     unreadNotificationCount,
 
@@ -614,12 +712,24 @@ export const AppProvider = ({ children }) => {
     issueMaterial,
     addProcurement,
 
+    addWorker,
+    updateWorker,
+    deleteWorker,
+
     assignWorkerToTask,
     recordAttendance,
     updateWorkerAttendance,
 
+    addInventoryItem,
+    addInventoryStock,
+
     assignProjectMember,
     removeProjectMember,
+
+    applyLeave,
+    approveLeave,
+    rejectLeave,
+    calculateSalary,
 
     addFinanceRecord,
 

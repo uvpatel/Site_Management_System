@@ -6,15 +6,17 @@
  */
 
 import { useContext, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import { useAuth } from '../hooks/useAuth';
 import { Card, Button, Input, Select, Modal, Table, Badge } from '../components/ui';
-import { Plus, Trash2, Edit2, Lock } from 'lucide-react';
+import { Plus, Trash2, Edit2, Lock, ExternalLink } from 'lucide-react';
 
 const Projects = () => {
-  const { projects, addProject, updateProject, deleteProject } =
+  const { projects, addProject, updateProject, deleteProject, projectMembers } =
     useContext(AppContext);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -34,11 +36,20 @@ const Projects = () => {
 
   // Filter projects based on role
   const visibleProjects = useMemo(() => {
-    if (user?.role === 'Admin' || user?.role === 'Project_Manager' || user?.role === 'Site_Engineer') {
+    if (user?.role === 'Admin' || user?.role === 'Project_Manager') {
       return projects;
     }
+    if (user?.role === 'Site_Engineer') {
+      // Site Engineer only sees projects they are assigned to
+      const assignedProjectIds = new Set(
+        projectMembers
+          .filter((pm) => pm.userId === user.id && pm.project_role === 'Site_Engineer')
+          .map((pm) => pm.projectId)
+      );
+      return projects.filter((p) => assignedProjectIds.has(p.id));
+    }
     return [];
-  }, [projects, user?.role]);
+  }, [projects, user, projectMembers]);
 
   // Filter and search projects
   const filteredProjects = useMemo(() => {
@@ -120,7 +131,19 @@ const Projects = () => {
 
   // Table columns
   const columns = [
-    { key: 'project_name', label: 'Project Name' },
+    {
+      key: 'project_name',
+      label: 'Project Name',
+      render: (value, row) => (
+        <button
+          onClick={() => navigate(`/projects/${row.id}`)}
+          className="flex items-center gap-2 text-amber-400 hover:text-amber-300 font-medium transition-colors text-left"
+        >
+          {value}
+          <ExternalLink size={12} />
+        </button>
+      ),
+    },
     { key: 'site_location', label: 'Location' },
     { key: 'project_type', label: 'Type' },
     {

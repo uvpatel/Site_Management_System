@@ -38,13 +38,13 @@ export default function ProjectTeam() {
   const getProjectName = (id) => projects.find((project) => project.id === id)?.project_name || id;
   const getUserName = (id) => users.find((user) => user.id === id)?.name || id;
 
-  const engineersAndStorekeepers = users.filter((user) => ['Site_Engineer', 'Storekeeper'].includes(user.role));
+  const siteEngineers = users.filter((user) => user.role === 'Site_Engineer');
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-50">Project Team Management</h1>
-        <p className="text-slate-400 mt-1">Assign engineers and storekeepers to projects using ProjectMember entity</p>
+        <p className="text-slate-400 mt-1">Assign site engineers to projects</p>
       </div>
 
       <Card title="Assign Project Member">
@@ -60,7 +60,7 @@ export default function ProjectTeam() {
             label="Member"
             required
             value={form.userId}
-            options={engineersAndStorekeepers.map((member) => ({ value: member.id, label: `${member.name} (${member.role})` }))}
+            options={siteEngineers.map((member) => ({ value: member.id, label: `${member.name} (${member.role})` }))}
             onChange={(e) => {
               const selected = users.find((user) => user.id === e.target.value);
               setForm({ ...form, userId: e.target.value, project_role: selected?.role || 'Site_Engineer' });
@@ -71,7 +71,6 @@ export default function ProjectTeam() {
             value={form.project_role}
             options={[
               { value: 'Site_Engineer', label: 'Site Engineer' },
-              { value: 'Storekeeper', label: 'Storekeeper' },
             ]}
             onChange={(e) => setForm({ ...form, project_role: e.target.value })}
           />

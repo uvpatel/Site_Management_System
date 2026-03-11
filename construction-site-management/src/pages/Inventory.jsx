@@ -1,37 +1,23 @@
 import { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { useAuth } from '../hooks/useAuth';
-import { Card, Badge, Button, Input } from '../components/ui';
-import { AlertTriangle, Lock } from 'lucide-react';
+import { Card, Badge, Button, Input, Modal, Select } from '../components/ui';
+import { AlertTriangle, Plus, PackagePlus } from 'lucide-react';
+
+const defaultItemForm = { item_name: '', category: '', uom: '', unit_cost: '', min_stock_qty: '', supplier: '' };
 
 export default function Inventory() {
-  const { inventory, purchaseOrders, materialIssues } = useContext(AppContext);
+  const { inventory, purchaseOrders, materialIssues, addInventoryItem, addInventoryStock } = useContext(AppContext);
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [addStockModal, setAddStockModal] = useState(null); // item id
+  const [addStockQty, setAddStockQty] = useState('');
+  const [addItemModal, setAddItemModal] = useState(false);
+  const [itemForm, setItemForm] = useState(defaultItemForm);
 
-  // Check if user can manage inventory (Admin, Project Manager, Storekeeper)
-  const canManageInventory = ['Admin', 'Project_Manager', 'Storekeeper'].includes(user?.role);
-
-  // Render access denied for other roles
-  if (!canManageInventory) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-50">Inventory Management</h1>
-          <p className="text-slate-400 mt-2">Monitor material stock levels and manage reorders</p>
-        </div>
-        <Card className="bg-rose-500/10 border border-rose-500/50">
-          <div className="flex items-center gap-3">
-            <Lock size={20} className="text-rose-500" />
-            <p className="text-rose-400">
-              You don't have access to inventory management. Only Admin, Project Managers, and Storekeepers can view this section.
-            </p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  // Admin, Project Manager, and Site Engineer can manage inventory
+  const canManageInventory = ['Admin', 'Project_Manager', 'Site_Engineer'].includes(user?.role);
 
   // Filter inventory based on search and category
   const filteredInventory = inventory.filter(item => {
@@ -50,9 +36,16 @@ export default function Inventory() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-50">Inventory Management</h1>
-        <p className="text-slate-400 mt-2">Monitor material stock levels and manage reorders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-50">Inventory Management</h1>
+          <p className="text-slate-400 mt-2">Monitor material stock levels and manage reorders</p>
+        </div>
+        {canManageInventory && (
+          <Button onClick={() => setAddItemModal(true)}>
+            <Plus size={14} className="mr-1" /> Add Item
+          </Button>
+        )}
       </div>
 
       {/* Search and Filter */}
@@ -61,7 +54,7 @@ export default function Inventory() {
           label="Search items"
           type="text"
           value={searchTerm}
-          onChange={setSearchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search by name or category..."
         />
         <div>
@@ -89,8 +82,9 @@ export default function Inventory() {
                 <th className="text-left py-3 px-4 text-slate-400 font-medium">Unit Cost</th>
                 <th className="text-left py-3 px-4 text-slate-400 font-medium">Current Stock</th>
                 <th className="text-left py-3 px-4 text-slate-400 font-medium">Min Stock</th>
+                <th className="text-left py-3 px-4 text-slate-400 font-medium">Supplier</th>
                 <th className="text-left py-3 px-4 text-slate-400 font-medium">Status</th>
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
+                {canManageInventory && <th className="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -107,6 +101,7 @@ export default function Inventory() {
                     <td className="py-3 px-4 text-slate-50">${item.unit_cost.toFixed(2)}</td>
                     <td className="py-3 px-4 text-slate-50">{item.current_stock} {item.uom}</td>
                     <td className="py-3 px-4 text-slate-50">{item.min_stock_qty} {item.uom}</td>
+                    <td className="py-3 px-4 text-slate-400 text-sm">{item.supplier || '—'}</td>
                     <td className="py-3 px-4">
                       {isLowStock(item) ? (
                         <div className="flex items-center gap-2">
@@ -117,18 +112,20 @@ export default function Inventory() {
                         <Badge variant="success">In Stock</Badge>
                       )}
                     </td>
-                    <td className="py-3 px-4">
-                      {isLowStock(item) && (
-                        <Button variant="primary" size="sm">
-                          Reorder
-                        </Button>
-                      )}
-                    </td>
+                    {canManageInventory && (
+                      <td className="py-3 px-4">
+                        {isLowStock(item) && (
+                          <Button variant="primary" size="sm" onClick={() => { setAddStockModal(item.id); setAddStockQty(''); }}>
+                            <PackagePlus size={13} className="mr-1" /> Add Stock
+                          </Button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-8 px-4 text-center text-slate-400">
+                  <td colSpan={canManageInventory ? 8 : 7} className="py-8 px-4 text-center text-slate-400">
                     No inventory items found
                   </td>
                 </tr>
@@ -155,8 +152,8 @@ export default function Inventory() {
                         Current: {item.current_stock} {item.uom} | Min: {item.min_stock_qty} {item.uom}
                       </p>
                     </div>
-                    <Button variant="danger" size="sm">
-                      Reorder Now
+                    <Button variant="danger" size="sm" onClick={() => { setAddStockModal(item.id); setAddStockQty(''); }}>
+                      Add Stock
                     </Button>
                   </div>
                 ))}
@@ -191,6 +188,65 @@ export default function Inventory() {
           <p className="text-2xl font-bold text-rose-500 mt-2">{inventory.filter(isLowStock).length}</p>
         </Card>
       </div>
+
+      {/* Add Stock Modal */}
+      <Modal isOpen={!!addStockModal} onClose={() => setAddStockModal(null)} title="Add Stock">
+        <div className="space-y-4">
+          <p className="text-slate-400 text-sm">
+            Adding stock for: <span className="text-slate-50 font-medium">
+              {inventory.find((i) => i.id === addStockModal)?.item_name}
+            </span>
+          </p>
+          <Input
+            label="Quantity to Add"
+            type="number"
+            min="1"
+            value={addStockQty}
+            onChange={(e) => setAddStockQty(e.target.value)}
+          />
+          <div className="flex gap-3 justify-end">
+            <Button variant="secondary" onClick={() => setAddStockModal(null)}>Cancel</Button>
+            <Button onClick={() => {
+              if (addStockModal && addStockQty) {
+                addInventoryStock(addStockModal, Number(addStockQty));
+                setAddStockModal(null);
+              }
+            }}>Add Stock</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Item Modal */}
+      <Modal isOpen={addItemModal} onClose={() => setAddItemModal(false)} title="Add Inventory Item">
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!itemForm.item_name || !itemForm.uom) return;
+            addInventoryItem({
+              ...itemForm,
+              unit_cost: Number(itemForm.unit_cost),
+              min_stock_qty: Number(itemForm.min_stock_qty),
+              current_stock: 0,
+            });
+            setItemForm(defaultItemForm);
+            setAddItemModal(false);
+          }}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Item Name" required value={itemForm.item_name} onChange={(e) => setItemForm({ ...itemForm, item_name: e.target.value })} />
+            <Input label="Category" value={itemForm.category} onChange={(e) => setItemForm({ ...itemForm, category: e.target.value })} />
+            <Input label="Unit of Measure" required value={itemForm.uom} onChange={(e) => setItemForm({ ...itemForm, uom: e.target.value })} placeholder="bags, pieces, kg..." />
+            <Input label="Unit Cost" type="number" min="0" step="0.01" value={itemForm.unit_cost} onChange={(e) => setItemForm({ ...itemForm, unit_cost: e.target.value })} />
+            <Input label="Min Stock Qty" type="number" min="0" value={itemForm.min_stock_qty} onChange={(e) => setItemForm({ ...itemForm, min_stock_qty: e.target.value })} />
+            <Input label="Supplier" value={itemForm.supplier} onChange={(e) => setItemForm({ ...itemForm, supplier: e.target.value })} />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="secondary" type="button" onClick={() => setAddItemModal(false)}>Cancel</Button>
+            <Button type="submit">Add Item</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

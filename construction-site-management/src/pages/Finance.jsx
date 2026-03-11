@@ -89,20 +89,20 @@ export default function Finance() {
         <Card>
           <div className="space-y-2">
             <p className="text-slate-400 text-sm">Total Budget</p>
-            <p className="text-2xl font-bold text-amber-500">${totalBudget.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-amber-500">₹{totalBudget.toLocaleString()}</p>
           </div>
         </Card>
         <Card>
           <div className="space-y-2">
             <p className="text-slate-400 text-sm">Total Spent</p>
-            <p className="text-2xl font-bold text-slate-50">${totalSpent.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-slate-50">₹{totalSpent.toLocaleString()}</p>
           </div>
         </Card>
         <Card>
           <div className="space-y-2">
             <p className="text-slate-400 text-sm">Remaining Budget</p>
             <p className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-              ${totalRemaining.toLocaleString()}
+              ₹{totalRemaining.toLocaleString()}
             </p>
           </div>
         </Card>
@@ -119,7 +119,7 @@ export default function Finance() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value }) => `${name}: $${value.toLocaleString()}`}
+                  label={({ name, value }) => `${name}: ₹${value.toLocaleString()}`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -129,7 +129,7 @@ export default function Finance() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `$${value.toLocaleString()}`}
+                  formatter={(value) => `₹${value.toLocaleString()}`}
                   contentStyle={{
                     backgroundColor: '#0f172a',
                     border: '1px solid #334155',
@@ -161,10 +161,10 @@ export default function Finance() {
                 projectFinancials.map(project => (
                   <tr key={project.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
                     <td className="py-3 px-4 text-slate-50">{project.project_name}</td>
-                    <td className="py-3 px-4 text-slate-50">${project.budget.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-slate-50">${project.totalCost.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-slate-50">₹{project.budget.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-slate-50">₹{project.totalCost.toLocaleString()}</td>
                     <td className={`py-3 px-4 font-medium ${project.remainingBudget >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      ${project.remainingBudget.toLocaleString()}
+                      ₹{project.remainingBudget.toLocaleString()}
                     </td>
                     <td className="py-3 px-4">
                       {project.remainingBudget >= 0 ? (
@@ -192,28 +192,28 @@ export default function Finance() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 bg-slate-800/50 rounded-lg">
             <p className="text-slate-400 text-sm mb-2">Labor Costs</p>
-            <p className="text-2xl font-bold text-amber-500">${laborCosts.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-amber-500">₹{laborCosts.toLocaleString()}</p>
             <p className="text-xs text-slate-500 mt-2">
               {((laborCosts / totalSpent) * 100).toFixed(1)}% of total
             </p>
           </div>
           <div className="p-4 bg-slate-800/50 rounded-lg">
             <p className="text-slate-400 text-sm mb-2">Material Costs</p>
-            <p className="text-2xl font-bold text-slate-400">${materialCosts.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-slate-400">₹{materialCosts.toLocaleString()}</p>
             <p className="text-xs text-slate-500 mt-2">
               {((materialCosts / totalSpent) * 100).toFixed(1)}% of total
             </p>
           </div>
           <div className="p-4 bg-slate-800/50 rounded-lg">
             <p className="text-slate-400 text-sm mb-2">Equipment Costs</p>
-            <p className="text-2xl font-bold text-blue-500">${equipmentCosts.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-500">₹{equipmentCosts.toLocaleString()}</p>
             <p className="text-xs text-slate-500 mt-2">
               {((equipmentCosts / totalSpent) * 100).toFixed(1)}% of total
             </p>
           </div>
           <div className="p-4 bg-slate-800/50 rounded-lg">
             <p className="text-slate-400 text-sm mb-2">Other Costs</p>
-            <p className="text-2xl font-bold text-purple-500">${otherCosts.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-purple-500">₹{otherCosts.toLocaleString()}</p>
             <p className="text-xs text-slate-500 mt-2">
               {((otherCosts / totalSpent) * 100).toFixed(1)}% of total
             </p>

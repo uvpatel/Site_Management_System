@@ -1,9 +1,3 @@
-/**
- * Sidebar Component
- * Navigation menu with role-based visibility
- * Shows/hides menu items based on user role
- */
-
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,11 +13,13 @@ import {
   ArrowLeftRight,
   CalendarClock,
   UserCheck,
-  UserSquare2,
   BellRing,
   FileSpreadsheet,
   Menu,
   X,
+  DollarSign,
+  FileText,
+  HardHat,
 } from 'lucide-react';
 
 const normalizeRole = (role) => {
@@ -39,40 +35,29 @@ const Sidebar = () => {
 
   // Role-based navigation visibility
   const navigationItems = [
+    // Admin & Project Manager
     {
       label: 'Dashboard',
       path: '/',
       icon: LayoutDashboard,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
       label: 'Projects',
       path: '/projects',
       icon: FolderOpen,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager'],
     },
     {
       label: 'Tasks',
       path: '/tasks',
       icon: CheckSquare,
-      roles: ['Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
-      label: 'Workforce',
+      label: 'Workers',
       path: '/workforce',
       icon: Users,
-      roles: ['Admin', 'Site_Engineer'],
-    },
-    {
-      label: 'Worker Portal',
-      path: '/worker-portal',
-      icon: UserSquare2,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
-    },
-    {
-      label: 'Assignments',
-      path: '/assignments',
-      icon: UserCheck,
       roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
@@ -82,28 +67,34 @@ const Sidebar = () => {
       roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
+      label: 'Assignments',
+      path: '/assignments',
+      icon: UserCheck,
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+    },
+    {
       label: 'Inventory',
       path: '/inventory',
       icon: Package,
-      roles: ['Admin', 'Project_Manager', 'Storekeeper'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
       label: 'Vendors',
       path: '/vendors',
       icon: Truck,
-      roles: ['Admin', 'Project_Manager', 'Storekeeper'],
+      roles: ['Admin', 'Project_Manager'],
     },
     {
       label: 'Procurement',
       path: '/procurement',
       icon: ClipboardList,
-      roles: ['Admin', 'Project_Manager', 'Storekeeper'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
       label: 'Material Issue',
       path: '/material-issue',
       icon: ArrowLeftRight,
-      roles: ['Admin', 'Project_Manager', 'Storekeeper', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
       label: 'Project Team',
@@ -118,16 +109,48 @@ const Sidebar = () => {
       roles: ['Admin', 'Project_Manager'],
     },
     {
+      label: 'Leave Requests',
+      path: '/leaves',
+      icon: FileText,
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+    },
+    {
       label: 'Notifications',
       path: '/notifications',
       icon: BellRing,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
     },
     {
       label: 'Reports',
       path: '/reports',
       icon: FileSpreadsheet,
-      roles: ['Admin', 'Project_Manager'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+    },
+
+    // Worker-only navigation
+    {
+      label: 'Dashboard',
+      path: '/worker',
+      icon: LayoutDashboard,
+      roles: ['Worker'],
+    },
+    {
+      label: 'Attendance',
+      path: '/worker/attendance',
+      icon: CalendarClock,
+      roles: ['Worker'],
+    },
+    {
+      label: 'Leave Application',
+      path: '/worker/leave',
+      icon: FileText,
+      roles: ['Worker'],
+    },
+    {
+      label: 'Salary',
+      path: '/worker/salary',
+      icon: DollarSign,
+      roles: ['Worker'],
     },
   ];
 
@@ -136,7 +159,10 @@ const Sidebar = () => {
     item.roles.includes(currentRole)
   );
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === '/' || path === '/worker') return location.pathname === path;
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <>

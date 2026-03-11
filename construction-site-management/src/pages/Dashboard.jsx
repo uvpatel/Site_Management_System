@@ -44,10 +44,6 @@ const Dashboard = () => {
     } else if (user?.role === 'Site_Engineer') {
       // Site Engineer sees assigned tasks only
       filteredTasks = tasks.filter(t => t.assigned_to === user?.id);
-    } else if (user?.role === 'Storekeeper') {
-      // Storekeeper doesn't see projects/tasks
-      filteredProjects = [];
-      filteredTasks = [];
     }
 
     const totalProjects = filteredProjects.length;
@@ -246,8 +242,8 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Low Stock Items - Admin, Project Manager, Storekeeper */}
-        {['Admin', 'Project_Manager', 'Storekeeper'].includes(user?.role) && (
+        {/* Low Stock Items - Admin, Project Manager, Site Engineer */}
+        {['Admin', 'Project_Manager', 'Site_Engineer'].includes(user?.role) && (
           <Card className="lg:col-span-1">
             <div className="flex items-center justify-between">
               <div>
@@ -270,7 +266,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-slate-400 text-sm">Total Budget</p>
                 <p className="text-2xl font-bold text-slate-50 mt-2">
-                  ${(kpis.totalBudget / 1000000).toFixed(1)}M
+                  ₹{(kpis.totalBudget / 1000000).toFixed(1)}M
                 </p>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-lg">
@@ -280,7 +276,7 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {['Admin', 'Project_Manager', 'Storekeeper'].includes(user?.role) && (
+        {['Admin', 'Project_Manager', 'Site_Engineer'].includes(user?.role) && (
           <Card className="lg:col-span-1">
             <div className="flex items-center justify-between">
               <div>
@@ -310,11 +306,11 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <p className="text-slate-400 text-sm">Vendor Spending</p>
-          <p className="text-2xl font-bold text-amber-500 mt-2">${analytics.totalVendorSpend.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-amber-500 mt-2">₹{analytics.totalVendorSpend.toLocaleString()}</p>
         </Card>
         <Card>
           <p className="text-slate-400 text-sm">Attendance Labor Cost</p>
-          <p className="text-2xl font-bold text-emerald-500 mt-2">${analytics.attendanceLaborCost.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-emerald-500 mt-2">₹{analytics.attendanceLaborCost.toLocaleString()}</p>
         </Card>
       </div>
 
@@ -357,8 +353,8 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Recent Tasks - All roles except Storekeeper */}
-      {user?.role !== 'Storekeeper' && (
+      {/* Recent Tasks - All roles except Worker */}
+      {user?.role !== 'Worker' && (
         <Card title="Recent Tasks">
           <div className="space-y-3">
             {filteredRecentTasks.length === 0 ? (
@@ -394,8 +390,8 @@ const Dashboard = () => {
         </Card>
       )}
 
-      {/* Storekeeper-specific: Inventory Overview */}
-      {user?.role === 'Storekeeper' && (
+      {/* Site_Engineer: Inventory Overview */}
+      {user?.role === 'Site_Engineer' && (
         <Card title="Inventory Overview">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-slate-800/50 rounded-lg">
@@ -409,9 +405,9 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg">
-              <p className="text-slate-400 text-sm">Total Value</p>
+              <p className="text-slate-400 text-sm">Total Inventory Value</p>
               <p className="text-3xl font-bold text-emerald-500 mt-2">
-                ${(inventory.reduce((sum, i) => sum + (i.current_stock * i.unit_cost), 0) / 1000).toFixed(0)}K
+                ₹{(inventory.reduce((sum, i) => sum + (i.current_stock * i.unit_cost), 0) / 1000).toFixed(0)}K
               </p>
             </div>
           </div>
