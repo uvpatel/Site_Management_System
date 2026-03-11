@@ -17,6 +17,15 @@ import Tasks from './pages/Tasks';
 import Workforce from './pages/Workforce';
 import Inventory from './pages/Inventory';
 import Finance from './pages/Finance';
+import VendorManagement from './pages/VendorManagement';
+import Procurement from './pages/Procurement';
+import MaterialIssue from './pages/MaterialIssue';
+import Assignments from './pages/Assignments';
+import Attendance from './pages/Attendance';
+import ProjectTeam from './pages/ProjectTeam';
+import WorkerPortal from './pages/WorkerPortal';
+import Notifications from './pages/Notifications';
+import Reports from './pages/Reports';
 import SignUp from './pages/SignUp';
 import AuthLogin from './pages/AuthLogin';
 import VerifyEmail from './pages/VerifyEmail';
@@ -63,8 +72,17 @@ function AppRoutes() {
         <Route path="projects" element={<Projects />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="workforce" element={<Workforce />} />
+        <Route path="worker-portal" element={<WorkerPortal />} />
+        <Route path="assignments" element={<Assignments />} />
+        <Route path="attendance" element={<Attendance />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="vendors" element={<VendorManagement />} />
+        <Route path="procurement" element={<Procurement />} />
+        <Route path="material-issue" element={<MaterialIssue />} />
+        <Route path="project-team" element={<ProjectTeam />} />
         <Route path="finance" element={<Finance />} />
+        <Route path="notifications" element={<Notifications />} />
+        <Route path="reports" element={<Reports />} />
       </Route>
 
       {/* Fallback */}

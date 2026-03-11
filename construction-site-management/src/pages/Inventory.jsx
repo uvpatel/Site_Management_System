@@ -5,7 +5,7 @@ import { Card, Badge, Button, Input } from '../components/ui';
 import { AlertTriangle, Lock } from 'lucide-react';
 
 export default function Inventory() {
-  const { inventory } = useContext(AppContext);
+  const { inventory, purchaseOrders, materialIssues } = useContext(AppContext);
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
@@ -167,6 +167,30 @@ export default function Inventory() {
           )}
         </div>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <p className="text-slate-400 text-sm">Open Procurement Orders</p>
+          <p className="text-2xl font-bold text-amber-500 mt-2">
+            {purchaseOrders.filter((po) => po.delivery_status === 'ordered').length}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-slate-400 text-sm">Materials Issued (30 days)</p>
+          <p className="text-2xl font-bold text-slate-50 mt-2">
+            {
+              materialIssues.filter((issue) => {
+                const age = Date.now() - new Date(issue.issuedAt).getTime();
+                return age <= 30 * 24 * 60 * 60 * 1000;
+              }).length
+            }
+          </p>
+        </Card>
+        <Card>
+          <p className="text-slate-400 text-sm">Integrated Low Stock Alerts</p>
+          <p className="text-2xl font-bold text-rose-500 mt-2">{inventory.filter(isLowStock).length}</p>
+        </Card>
+      </div>
     </div>
   );
 }

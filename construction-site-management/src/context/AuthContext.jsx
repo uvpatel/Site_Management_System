@@ -8,6 +8,11 @@ import authService from '../services/authService';
 
 export const AuthContext = createContext();
 
+const normalizeRole = (role) => {
+  if (!role || typeof role !== 'string') return 'Site_Engineer';
+  return role.trim().replace(/\s+/g, '_');
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -19,7 +24,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const session = authService.getSession();
     if (session && session.token && session.user) {
-      setUser(session.user);
+      const normalizedUser = {
+        ...session.user,
+        role: normalizeRole(session.user.role),
+      };
+      setUser(normalizedUser);
       setToken(session.token);
       setIsAuthenticated(true);
     }
@@ -97,7 +106,7 @@ export function AuthProvider({ children }) {
       const result = authService.login(email, password, rememberMe);
       if (result.success) {
         // Assign selected role to user
-        const userWithRole = { ...result.user, role };
+        const userWithRole = { ...result.user, role: normalizeRole(role) };
         setUser(userWithRole);
         setToken(result.token);
         setIsAuthenticated(true);

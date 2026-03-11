@@ -12,7 +12,7 @@ import { Card, Button, Input, Select, Modal, Badge } from '../components/ui';
 import { Plus, Trash2, Lock } from 'lucide-react';
 
 const Tasks = () => {
-  const { tasks, projects, workers, addTask, updateTaskStatus } =
+  const { tasks, projects, workers, addTask, updateTaskStatus, checkDependencies, updateTaskProgress } =
     useContext(AppContext);
   const { user } = useAuth();
 
@@ -23,6 +23,8 @@ const Tasks = () => {
     projectId: '',
     assigned_to: '',
     priority: 'Medium',
+    deadline: '',
+    workers_assigned: [],
   });
 
   // Check if user can create/delete tasks
@@ -62,6 +64,10 @@ const Tasks = () => {
       projectId: formData.projectId,
       assigned_to: formData.assigned_to,
       priority: formData.priority,
+      deadline: formData.deadline,
+      due_date: formData.deadline,
+      workers_assigned: formData.workers_assigned,
+      materials_used: [],
     });
 
     resetForm();
@@ -75,6 +81,8 @@ const Tasks = () => {
       projectId: '',
       assigned_to: '',
       priority: 'Medium',
+      deadline: '',
+      workers_assigned: [],
     });
   };
 
@@ -118,13 +126,25 @@ const Tasks = () => {
   };
 
   // Priority color
-  const getPriorityColor = (priority) => {
-    const colors = {
-      Low: 'status',
-      Medium: 'warning',
-      High: 'danger',
+  const getPriorityBgClass = (priority) => {
+    const classes = {
+      Low: 'bg-green-500/20 text-green-400 border border-green-500/50',
+      Medium: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
+      High: 'bg-orange-500/20 text-orange-400 border border-orange-500/50',
+      Critical: 'bg-red-500/20 text-red-400 border border-red-500/50',
     };
-    return colors[priority] || 'status';
+    return classes[priority] || classes.Medium;
+  };
+
+  const getDependencyStatus = (task) => {
+    if (!task.dependencies || task.dependencies.length === 0) {
+      return { blocked: false, text: '' };
+    }
+    const allComplete = checkDependencies(task.id);
+    return {
+      blocked: !allComplete && task.status !== 'Completed',
+      text: allComplete ? 'Ready' : 'Blocked',
+    };
   };
 
   // Kanban column
@@ -143,9 +163,11 @@ const Tasks = () => {
 
       <div className="space-y-3">
         {taskList.map((task) => {
-          const canEditTask = canManageTasks || task.assigned_to === user?.id;
+            const canEditTask = canManageTasks || task.assigned_to === user?.id;
+            const depStatus = getDependencyStatus(task);
+            const progress = task.progress || 0;
           
-          return (
+            return (
             <div
               key={task.id}
               draggable={canEditTask}
@@ -174,13 +196,38 @@ const Tasks = () => {
                 {getProjectName(task.projectId)}
               </p>
 
-              <div className="flex items-center justify-between gap-2">
-                <Badge variant={getPriorityColor(task.priority)}>
+
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className={`text-xs px-2 py-1 rounded font-medium ${getPriorityBgClass(task.priority)}`}>
                   {task.priority}
-                </Badge>
-                <span className="text-xs text-slate-400">
-                  {getWorkerName(task.assigned_to)}
                 </span>
+                {depStatus.text && (
+                  <span className={`text-xs px-2 py-1 rounded ${depStatus.blocked ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+                    {depStatus.text}
+                  </span>
+                )}
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-400">Progress</span>
+                  <span className="text-xs text-slate-300 font-medium">{progress}%</span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div
+                    className="bg-amber-500 h-2 rounded-full transition-all"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2 text-xs text-slate-400 space-y-1">
+                <p>Deadline: {task.deadline || task.due_date || '-'}</p>
+                <p>Workers: {(task.workers_assigned || []).length}</p>
+                <p>Materials: {(task.materials_used || []).length}</p>
+                {task.dependencies && task.dependencies.length > 0 && (
+                  <p>Dependencies: {task.dependencies.length}</p>
+                )}
               </div>
             </div>
           );
@@ -298,6 +345,37 @@ const Tasks = () => {
                 setFormData({ ...formData, priority: e.target.value })
               }
             />
+
+            <Input
+              label="Deadline"
+              type="date"
+              required
+              value={formData.deadline}
+              onChange={(e) =>
+                setFormData({ ...formData, deadline: e.target.value })
+              }
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Additional Workers Assigned
+              </label>
+              <select
+                multiple
+                value={formData.workers_assigned}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions).map((option) => option.value);
+                  setFormData({ ...formData, workers_assigned: selected });
+                }}
+                className="w-full px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-50 focus:outline-none focus:border-amber-500 min-h-28"
+              >
+                {workers.map((worker) => (
+                  <option key={worker.id} value={worker.id}>
+                    {worker.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="flex gap-3 pt-4">
               <Button type="submit" variant="primary" className="flex-1">

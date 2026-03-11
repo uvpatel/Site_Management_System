@@ -14,14 +14,28 @@ import {
   Users,
   Package,
   BarChart3,
+  Truck,
+  ClipboardList,
+  ArrowLeftRight,
+  CalendarClock,
+  UserCheck,
+  UserSquare2,
+  BellRing,
+  FileSpreadsheet,
   Menu,
   X,
 } from 'lucide-react';
+
+const normalizeRole = (role) => {
+  if (!role || typeof role !== 'string') return '';
+  return role.trim().replace(/\s+/g, '_');
+};
 
 const Sidebar = () => {
   const { user } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const currentRole = normalizeRole(user?.role);
 
   // Role-based navigation visibility
   const navigationItems = [
@@ -50,10 +64,52 @@ const Sidebar = () => {
       roles: ['Admin', 'Site_Engineer'],
     },
     {
+      label: 'Worker Portal',
+      path: '/worker-portal',
+      icon: UserSquare2,
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
+    },
+    {
+      label: 'Assignments',
+      path: '/assignments',
+      icon: UserCheck,
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+    },
+    {
+      label: 'Attendance',
+      path: '/attendance',
+      icon: CalendarClock,
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+    },
+    {
       label: 'Inventory',
       path: '/inventory',
       icon: Package,
       roles: ['Admin', 'Project_Manager', 'Storekeeper'],
+    },
+    {
+      label: 'Vendors',
+      path: '/vendors',
+      icon: Truck,
+      roles: ['Admin', 'Project_Manager', 'Storekeeper'],
+    },
+    {
+      label: 'Procurement',
+      path: '/procurement',
+      icon: ClipboardList,
+      roles: ['Admin', 'Project_Manager', 'Storekeeper'],
+    },
+    {
+      label: 'Material Issue',
+      path: '/material-issue',
+      icon: ArrowLeftRight,
+      roles: ['Admin', 'Project_Manager', 'Storekeeper', 'Site_Engineer'],
+    },
+    {
+      label: 'Project Team',
+      path: '/project-team',
+      icon: Users,
+      roles: ['Admin', 'Project_Manager'],
     },
     {
       label: 'Finance',
@@ -61,11 +117,23 @@ const Sidebar = () => {
       icon: BarChart3,
       roles: ['Admin', 'Project_Manager'],
     },
+    {
+      label: 'Notifications',
+      path: '/notifications',
+      icon: BellRing,
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
+    },
+    {
+      label: 'Reports',
+      path: '/reports',
+      icon: FileSpreadsheet,
+      roles: ['Admin', 'Project_Manager'],
+    },
   ];
 
   // Filter items based on user role
   const visibleItems = navigationItems.filter((item) =>
-    item.roles.includes(user?.role)
+    item.roles.includes(currentRole)
   );
 
   const isActive = (path) => location.pathname === path;
@@ -86,7 +154,7 @@ const Sidebar = () => {
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="p-6">
+        <div className="p-6 h-full overflow-y-auto pb-24">
           <h1 className="text-2xl font-bold text-amber-500 mb-8">SiteOS</h1>
 
           <nav className="space-y-2">
