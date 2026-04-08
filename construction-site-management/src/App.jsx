@@ -1,13 +1,13 @@
 /**
  * App Component
  * Main application with routing setup
- * Integrates AuthProvider, AppProvider and Router configuration
+ * Integrates AuthProvider, AppProvider, ToastProvider, and Router configuration
  */
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { AppProvider, AppContext } from './context/AppContext';
-import { useContext } from 'react';
+import { AppProvider } from './context/AppContext';
+import { ToastProvider } from './components/ui/ToastSystem';
 import { useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AppLayout } from './components/layout';
@@ -156,9 +156,11 @@ function App() {
   return (
     <AuthProvider>
       <AppProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <ToastProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </ToastProvider>
       </AppProvider>
     </AuthProvider>
   );

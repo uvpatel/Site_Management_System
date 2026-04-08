@@ -1,0 +1,10 @@
+import express from "express";
+import { getAll, create, update, remove, getProjectSummary, getCategorySummary } from "../controllers/finance.controller.js";
+import { protect, authorize } from "../middleware/auth.js";
+const router = express.Router();
+router.use(protect);
+router.get("/project-summary", authorize("Admin", "Project_Manager"), getProjectSummary);
+router.get("/category-summary", getCategorySummary);
+router.route("/").get(getAll).post(create);
+router.route("/:id").put(update).delete(authorize("Admin", "Project_Manager"), remove);
+export default router;

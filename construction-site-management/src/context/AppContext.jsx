@@ -1,75 +1,171 @@
 /**
  * AppContext
- * Global state and frontend-only business logic for SiteOS Enterprise SaaS simulation
+ * Global state with real API integration for SiteOS Enterprise
+ * Maintains the same interface as the original mock-data version
  */
 
-import { createContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  mockUsers,
-  mockProjects,
-  mockTasks,
-  mockWorkers,
-  mockInventory,
-  mockFinance,
-  mockVendors,
-  mockPurchaseOrders,
-  mockMaterialIssues,
-  mockWorkerAssignments,
-  mockAttendance,
-  mockProjectMembers,
-  mockNotifications,
-  mockLeaveApplications,
-} from '../data/mockData';
+  projectService,
+  taskService,
+  workerService,
+  inventoryService,
+  vendorService,
+  procurementService,
+  materialIssueService,
+  attendanceService,
+  workerAssignmentService,
+  financeService,
+  leaveService,
+  notificationService,
+} from '../services/apiServices';
 
 export const AppContext = createContext();
-
-const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-const sameDay = (dateA, dateB) => {
-  return new Date(dateA).toISOString().slice(0, 10) === new Date(dateB).toISOString().slice(0, 10);
-};
 
 export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const [users] = useState(mockUsers);
-  const [projects, setProjects] = useState(mockProjects);
-  const [tasks, setTasks] = useState(mockTasks);
-  const [workers, setWorkers] = useState(mockWorkers);
-  const [inventory, setInventory] = useState(mockInventory);
-  const [financeRecords, setFinanceRecords] = useState(mockFinance);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [workers, setWorkers] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [financeRecords, setFinanceRecords] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [materialIssues, setMaterialIssues] = useState([]);
+  const [workerAssignments, setWorkerAssignments] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [leaveApplications, setLeaveApplications] = useState([]);
 
-  const [vendors, setVendors] = useState(mockVendors);
-  const [purchaseOrders, setPurchaseOrders] = useState(mockPurchaseOrders);
-  const [materialIssues, setMaterialIssues] = useState(mockMaterialIssues);
-  const [workerAssignments, setWorkerAssignments] = useState(mockWorkerAssignments);
-  const [attendanceRecords, setAttendanceRecords] = useState(mockAttendance);
-  const [projectMembers, setProjectMembers] = useState(mockProjectMembers);
-  const [notifications, setNotifications] = useState(mockNotifications);
-  const [leaveApplications, setLeaveApplications] = useState(mockLeaveApplications);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState(null);
+
+  // Helper to normalize API data (MongoDB _id → id)
+  const normalize = (item) => {
+    if (!item) return item;
+    if (Array.isArray(item)) return item.map(normalize);
+    const obj = { ...item };
+    if (obj._id && !obj.id) obj.id = obj._id;
+    return obj;
+  };
+
+  // Fetch all data from API
+  const fetchAllData = useCallback(async () => {
+    const token = localStorage.getItem('siteos_token');
+    if (!token) return;
+
+    setDataLoading(true);
+    setDataError(null);
+    try {
+      const [
+        projectsRes,
+        tasksRes,
+        workersRes,
+        inventoryRes,
+        vendorsRes,
+        procurementRes,
+        materialIssuesRes,
+        assignmentsRes,
+        attendanceRes,
+        financeRes,
+        leavesRes,
+        notificationsRes,
+      ] = await Promise.allSettled([
+        projectService.getAll(),
+        taskService.getAll(),
+        workerService.getAll(),
+        inventoryService.getAll(),
+        vendorService.getAll(),
+        procurementService.getAll(),
+        materialIssueService.getAll(),
+        workerAssignmentService.getAll(),
+        attendanceService.getAll(),
+        financeService.getAll(),
+        leaveService.getAll(),
+        notificationService.getAll(),
+      ]);
+
+      if (projectsRes.status === 'fulfilled') setProjects(normalize(projectsRes.value.data || []));
+      if (tasksRes.status === 'fulfilled') setTasks(normalize(tasksRes.value.data || []));
+      if (workersRes.status === 'fulfilled') setWorkers(normalize(workersRes.value.data || []));
+      if (inventoryRes.status === 'fulfilled') setInventory(normalize(inventoryRes.value.data || []));
+      if (vendorsRes.status === 'fulfilled') setVendors(normalize(vendorsRes.value.data || []));
+      if (procurementRes.status === 'fulfilled') setPurchaseOrders(normalize(procurementRes.value.data || []));
+      if (materialIssuesRes.status === 'fulfilled') setMaterialIssues(normalize(materialIssuesRes.value.data || []));
+      if (assignmentsRes.status === 'fulfilled') setWorkerAssignments(normalize(assignmentsRes.value.data || []));
+      if (attendanceRes.status === 'fulfilled') setAttendanceRecords(normalize(attendanceRes.value.data || []));
+      if (financeRes.status === 'fulfilled') setFinanceRecords(normalize(financeRes.value.data || []));
+      if (leavesRes.status === 'fulfilled') setLeaveApplications(normalize(leavesRes.value.data || []));
+      if (notificationsRes.status === 'fulfilled') setNotifications(normalize(notificationsRes.value.data || []));
+
+      // Extract project members from projects
+      if (projectsRes.status === 'fulfilled') {
+        const members = [];
+        (projectsRes.value.data || []).forEach(p => {
+          (p.members || []).forEach(m => {
+            members.push({ id: m._id, projectId: p._id, userId: m.userId?._id || m.userId, project_role: m.memberRole, ...m });
+          });
+        });
+        setProjectMembers(normalize(members));
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setDataError('Failed to load data');
+    } finally {
+      setDataLoading(false);
+    }
+  }, []);
+
+  // Auto-fetch data when token exists
+  useEffect(() => {
+    const token = localStorage.getItem('siteos_token');
+    if (token) {
+      fetchAllData();
+    }
+  }, [fetchAllData]);
+
+  // Listen for auth changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const token = localStorage.getItem('siteos_token');
+      if (token) {
+        fetchAllData();
+      } else {
+        // Clear all data on logout
+        setProjects([]);
+        setTasks([]);
+        setWorkers([]);
+        setInventory([]);
+        setFinanceRecords([]);
+        setVendors([]);
+        setPurchaseOrders([]);
+        setMaterialIssues([]);
+        setWorkerAssignments([]);
+        setAttendanceRecords([]);
+        setProjectMembers([]);
+        setNotifications([]);
+        setLeaveApplications([]);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [fetchAllData]);
 
   const pushNotification = useCallback((notification) => {
     setNotifications((prev) => [
-      {
-        id: makeId('note'),
-        read: false,
-        createdAt: new Date().toISOString(),
-        severity: 'medium',
-        ...notification,
-      },
+      { id: `local-${Date.now()}`, read: false, createdAt: new Date().toISOString(), severity: 'medium', ...notification },
       ...prev,
     ]);
   }, []);
 
-  // Authentication actions
+  // Authentication actions (kept for AppContext backward compatibility)
   const login = useCallback((userId) => {
-    const user = users.find((u) => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-    }
-  }, [users]);
+    setCurrentUser({ id: userId });
+    setIsAuthenticated(true);
+  }, []);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
@@ -77,595 +173,483 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const switchRole = useCallback((newRole) => {
-    if (currentUser) {
-      setCurrentUser({ ...currentUser, role: newRole });
-    }
+    if (currentUser) setCurrentUser({ ...currentUser, role: newRole });
   }, [currentUser]);
 
-  // Project actions
-  const addProject = useCallback((project) => {
-    const newProject = {
-      id: makeId('proj'),
-      ...project,
-      status: project.status || 'Planning',
-    };
-    setProjects((prev) => [...prev, newProject]);
-    return newProject;
-  }, []);
-
-  const updateProject = useCallback((id, updates) => {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
-  }, []);
-
-  const deleteProject = useCallback((id) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-  }, []);
-
-  // Task actions
-  const addTask = useCallback((task) => {
-    const newTask = {
-      id: makeId('task'),
-      ...task,
-      status: task.status || 'Open',
-      priority: task.priority || 'Medium',
-      workers_assigned: task.workers_assigned || [],
-      materials_used: task.materials_used || [],
-      deadline: task.deadline || task.due_date,
-    };
-    setTasks((prev) => [...prev, newTask]);
-    return newTask;
-  }, []);
-
-  const checkDependencies = useCallback((taskId, tasksList = null) => {
-    const currentTasks = tasksList || tasks;
-    const task = currentTasks.find((t) => t.id === taskId);
-    if (!task || !task.dependencies || task.dependencies.length === 0) {
-      return true;
+  // ─── Project Actions ────────────────────────────────
+  const addProject = useCallback(async (project) => {
+    try {
+      const res = await projectService.create({
+        projectName: project.project_name || project.projectName,
+        siteLocation: project.site_location || project.siteLocation,
+        projectType: project.project_type || project.projectType || 'Commercial',
+        startDate: project.start_date || project.startDate,
+        endDate: project.end_date || project.endDate,
+        budget: Number(project.budget),
+        status: project.status || 'Planning',
+      });
+      const newProject = normalize(res.data);
+      setProjects((prev) => [...prev, newProject]);
+      return newProject;
+    } catch (err) {
+      console.error('Error adding project:', err);
+      pushNotification({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to add project' });
+      return null;
     }
-    return task.dependencies.every((depId) => {
-      const depTask = currentTasks.find((t) => t.id === depId);
+  }, [pushNotification]);
+
+  const updateProject = useCallback(async (id, updates) => {
+    try {
+      const payload = {};
+      if (updates.project_name || updates.projectName) payload.projectName = updates.project_name || updates.projectName;
+      if (updates.site_location || updates.siteLocation) payload.siteLocation = updates.site_location || updates.siteLocation;
+      if (updates.project_type || updates.projectType) payload.projectType = updates.project_type || updates.projectType;
+      if (updates.start_date || updates.startDate) payload.startDate = updates.start_date || updates.startDate;
+      if (updates.end_date || updates.endDate) payload.endDate = updates.end_date || updates.endDate;
+      if (updates.budget !== undefined) payload.budget = Number(updates.budget);
+      if (updates.status) payload.status = updates.status;
+
+      const res = await projectService.update(id, payload);
+      setProjects((prev) => prev.map((p) => (p.id === id || p._id === id ? normalize(res.data) : p)));
+    } catch (err) {
+      console.error('Error updating project:', err);
+    }
+  }, []);
+
+  const deleteProject = useCallback(async (id) => {
+    try {
+      await projectService.remove(id);
+      setProjects((prev) => prev.filter((p) => p.id !== id && p._id !== id));
+    } catch (err) {
+      console.error('Error deleting project:', err);
+    }
+  }, []);
+
+  // ─── Task Actions ────────────────────────────────────
+  const addTask = useCallback(async (task) => {
+    try {
+      const res = await taskService.create({
+        taskName: task.task_name || task.taskName,
+        projectId: task.projectId,
+        assignedTo: task.assigned_to || task.assignedTo,
+        status: task.status || 'Open',
+        priority: task.priority || 'Medium',
+        dueDate: task.due_date || task.dueDate,
+        deadline: task.deadline || task.due_date || task.dueDate,
+        workersAssigned: task.workers_assigned || task.workersAssigned || [],
+        dependencies: task.dependencies || [],
+      });
+      const newTask = normalize(res.data);
+      setTasks((prev) => [...prev, newTask]);
+      return newTask;
+    } catch (err) {
+      console.error('Error adding task:', err);
+      return null;
+    }
+  }, []);
+
+  const checkDependencies = useCallback((taskId) => {
+    const task = tasks.find((t) => (t.id || t._id) === taskId);
+    if (!task || !task.dependencies || task.dependencies.length === 0) return true;
+    return task.dependencies.every((dep) => {
+      const depId = dep._id || dep.id || dep;
+      const depTask = tasks.find((t) => (t.id || t._id) === depId);
       return depTask && depTask.status === 'Completed';
     });
   }, [tasks]);
 
-  const updateTaskStatus = useCallback((id, status, skipValidation = false) => {
+  const updateTaskStatus = useCallback(async (id, status, skipValidation = false) => {
     if (status === 'In Progress' && !skipValidation) {
-      const depsOk = checkDependencies(id);
-      if (!depsOk) {
-        pushNotification({
-          type: 'error',
-          title: 'Blocked Task',
-          message: 'Cannot start: incomplete dependencies',
-        });
+      if (!checkDependencies(id)) {
+        pushNotification({ type: 'error', title: 'Blocked Task', message: 'Cannot start: incomplete dependencies' });
         return false;
       }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
-    return true;
+    try {
+      const res = await taskService.updateStatus(id, status);
+      setTasks((prev) => prev.map((t) => ((t.id || t._id) === id ? normalize(res.data) : t)));
+      return true;
+    } catch (err) {
+      console.error('Error updating task status:', err);
+      pushNotification({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to update task status' });
+      return false;
+    }
   }, [checkDependencies, pushNotification]);
 
-  const addTaskDependency = useCallback((taskId, depId) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId && !t.dependencies?.includes(depId)) {
-          return { ...t, dependencies: [...(t.dependencies || []), depId] };
-        }
-        return t;
-      })
-    );
+  const addTaskDependency = useCallback(async (taskId, depId) => {
+    const task = tasks.find(t => (t.id || t._id) === taskId);
+    if (!task) return;
+    const deps = [...(task.dependencies || []), depId];
+    try {
+      const res = await taskService.update(taskId, { dependencies: deps });
+      setTasks((prev) => prev.map((t) => ((t.id || t._id) === taskId ? normalize(res.data) : t)));
+    } catch (err) { console.error('Error adding dependency:', err); }
+  }, [tasks]);
+
+  const removeTaskDependency = useCallback(async (taskId, depId) => {
+    const task = tasks.find(t => (t.id || t._id) === taskId);
+    if (!task) return;
+    const deps = (task.dependencies || []).filter(d => (d._id || d.id || d) !== depId);
+    try {
+      const res = await taskService.update(taskId, { dependencies: deps });
+      setTasks((prev) => prev.map((t) => ((t.id || t._id) === taskId ? normalize(res.data) : t)));
+    } catch (err) { console.error('Error removing dependency:', err); }
+  }, [tasks]);
+
+  const updateTaskProgress = useCallback(async (taskId, progress) => {
+    try {
+      const res = await taskService.updateProgress(taskId, progress);
+      setTasks((prev) => prev.map((t) => ((t.id || t._id) === taskId ? normalize(res.data) : t)));
+    } catch (err) { console.error('Error updating progress:', err); }
   }, []);
 
-  const removeTaskDependency = useCallback((taskId, depId) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, dependencies: (t.dependencies || []).filter(d => d !== depId) } : t))
-    );
+  const updateTask = useCallback(async (taskId, updates) => {
+    try {
+      const res = await taskService.update(taskId, updates);
+      setTasks((prev) => prev.map((t) => ((t.id || t._id) === taskId ? normalize(res.data) : t)));
+    } catch (err) { console.error('Error updating task:', err); }
   }, []);
 
-  const updateTaskProgress = useCallback((taskId, progress) => {
-    const p = Math.max(0, Math.min(100, Math.round(progress)));
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, progress: p } : t)));
+  // ─── Vendor Actions ──────────────────────────────────
+  const addVendor = useCallback(async (vendor) => {
+    try {
+      const res = await vendorService.create({
+        vendorName: vendor.vendor_name || vendor.vendorName,
+        contact: vendor.contact,
+        email: vendor.email,
+        address: vendor.address,
+        rating: Number(vendor.rating || 0),
+      });
+      const v = normalize(res.data);
+      setVendors((prev) => [...prev, v]);
+      return v;
+    } catch (err) { console.error('Error adding vendor:', err); return null; }
   }, []);
 
-  const updateTask = useCallback((taskId, updates) => {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
+  const updateVendor = useCallback(async (vendorId, updates) => {
+    try {
+      const res = await vendorService.update(vendorId, updates);
+      setVendors((prev) => prev.map((v) => ((v.id || v._id) === vendorId ? normalize(res.data) : v)));
+    } catch (err) { console.error('Error updating vendor:', err); }
   }, []);
 
-  // Vendor management
-  const addVendor = useCallback((vendor) => {
-    const newVendor = { id: makeId('vendor'), ...vendor, rating: Number(vendor.rating || 0) };
-    setVendors((prev) => [...prev, newVendor]);
-    return newVendor;
+  const deleteVendor = useCallback(async (vendorId) => {
+    try {
+      await vendorService.remove(vendorId);
+      setVendors((prev) => prev.filter((v) => (v.id || v._id) !== vendorId));
+    } catch (err) { console.error('Error deleting vendor:', err); }
   }, []);
 
-  const updateVendor = useCallback((vendorId, updates) => {
-    setVendors((prev) => prev.map((v) => (v.id === vendorId ? { ...v, ...updates } : v)));
+  // ─── Finance ─────────────────────────────────────────
+  const addFinanceRecord = useCallback(async (record) => {
+    try {
+      const res = await financeService.create({
+        projectId: record.projectId,
+        costCategory: record.cost_category || record.costCategory || 'Other',
+        amount: Number(record.amount),
+        description: record.description,
+        paymentStatus: record.payment_status || record.paymentStatus || 'Pending',
+        date: record.date || new Date().toISOString().slice(0, 10),
+        source: record.source || 'manual',
+      });
+      const newRec = normalize(res.data);
+      setFinanceRecords((prev) => [...prev, newRec]);
+      return newRec;
+    } catch (err) { console.error('Error adding finance record:', err); return null; }
   }, []);
 
-  const deleteVendor = useCallback((vendorId) => {
-    setVendors((prev) => prev.filter((v) => v.id !== vendorId));
+  // ─── Procurement ─────────────────────────────────────
+  const createPurchaseOrder = useCallback(async (payload, actorId) => {
+    try {
+      const res = await procurementService.create({
+        projectId: payload.projectId,
+        vendorId: payload.vendorId,
+        itemId: payload.itemId,
+        quantity: Number(payload.quantity),
+        unitPrice: Number(payload.unit_price || payload.unitPrice),
+        deliveryStatus: payload.delivery_status || payload.deliveryStatus || 'ordered',
+        expectedDelivery: payload.expectedDelivery,
+      });
+      const po = normalize(res.data);
+      setPurchaseOrders((prev) => [...prev, po]);
+      // Refresh inventory if delivered
+      if (po.deliveryStatus === 'delivered') {
+        const invRes = await inventoryService.getAll();
+        setInventory(normalize(invRes.data || []));
+      }
+      return po;
+    } catch (err) { console.error('Error creating PO:', err); return null; }
   }, []);
 
-  // Finance helper
-  const addFinanceRecord = useCallback((record) => {
-    const newRecord = {
-      id: makeId('fin'),
-      payment_status: 'Pending',
-      date: new Date().toISOString().slice(0, 10),
-      source: 'automation',
-      ...record,
-    };
-    setFinanceRecords((prev) => [...prev, newRecord]);
-    return newRecord;
+  const updatePurchaseDeliveryStatus = useCallback(async (poId, status) => {
+    try {
+      const res = await procurementService.updateDeliveryStatus(poId, status);
+      setPurchaseOrders((prev) => prev.map((po) => ((po.id || po._id) === poId ? normalize(res.data) : po)));
+      if (status === 'delivered') {
+        const invRes = await inventoryService.getAll();
+        setInventory(normalize(invRes.data || []));
+      }
+    } catch (err) { console.error('Error updating delivery status:', err); }
   }, []);
 
-  // Procurement
-  const createPurchaseOrder = useCallback((payload, actorId) => {
-    const po = {
-      id: makeId('po'),
-      ...payload,
-      quantity: Number(payload.quantity),
-      unit_price: Number(payload.unit_price),
-      createdAt: new Date().toISOString().slice(0, 10),
-      delivery_status: payload.delivery_status || 'ordered',
-      created_by: actorId,
-    };
-
-    setPurchaseOrders((prev) => [...prev, po]);
-
-    addFinanceRecord({
-      projectId: po.projectId,
-      cost_category: 'Material',
-      amount: po.quantity * po.unit_price,
-      description: `PO ${po.id} created for ${po.quantity} units`,
-    });
-
-    pushNotification({
-      type: 'procurement_delivery',
-      severity: 'medium',
-      title: `PO created: ${po.id}`,
-      message: `Purchase order for project ${po.projectId} has been created.`,
-    });
-
-    if (po.delivery_status === 'delivered') {
-      setInventory((prev) =>
-        prev.map((item) =>
-          item.id === po.itemId
-            ? { ...item, current_stock: item.current_stock + po.quantity }
-            : item
-        )
-      );
+  // ─── Material Issue ──────────────────────────────────
+  const issueMaterial = useCallback(async (payload, actorId) => {
+    try {
+      const res = await materialIssueService.create({
+        itemId: payload.itemId,
+        quantity: Number(payload.quantity),
+        projectId: payload.projectId,
+        taskId: payload.taskId,
+      });
+      const issue = normalize(res.data);
+      setMaterialIssues((prev) => [...prev, issue]);
+      // Refresh inventory and finance
+      const invRes = await inventoryService.getAll();
+      setInventory(normalize(invRes.data || []));
+      const finRes = await financeService.getAll();
+      setFinanceRecords(normalize(finRes.data || []));
+      return issue;
+    } catch (err) {
+      console.error('Error issuing material:', err);
+      pushNotification({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to issue material' });
+      return null;
     }
-
-    return po;
-  }, [addFinanceRecord, pushNotification]);
-
-  const updatePurchaseDeliveryStatus = useCallback((poId, status) => {
-    setPurchaseOrders((prev) => {
-      const target = prev.find((po) => po.id === poId);
-      if (!target) {
-        return prev;
-      }
-
-      const wasDelivered = target.delivery_status === 'delivered';
-      const nowDelivered = status === 'delivered';
-
-      if (!wasDelivered && nowDelivered) {
-        setInventory((inventoryPrev) =>
-          inventoryPrev.map((item) =>
-            item.id === target.itemId
-              ? { ...item, current_stock: item.current_stock + target.quantity }
-              : item
-          )
-        );
-
-        pushNotification({
-          type: 'procurement_delivery',
-          severity: 'low',
-          title: `PO delivered: ${target.id}`,
-          message: `Delivery received for purchase order ${target.id}.`,
-        });
-      }
-
-      return prev.map((po) =>
-        po.id === poId
-          ? {
-              ...po,
-              delivery_status: status,
-              deliveredAt: nowDelivered ? new Date().toISOString().slice(0, 10) : po.deliveredAt,
-            }
-          : po
-      );
-    });
   }, [pushNotification]);
 
-  // Material issue and inventory workflow
-  const issueMaterial = useCallback((payload, actorId) => {
-    const { itemId, quantity, projectId, taskId } = payload;
-    const qty = Number(quantity);
-
-    setInventory((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? { ...item, current_stock: Math.max(0, item.current_stock - qty) }
-          : item
-      )
-    );
-
-    const issue = {
-      id: makeId('mi'),
+  const addProcurement = useCallback(async (itemId, quantity, cost) => {
+    const item = inventory.find((inv) => (inv.id || inv._id) === itemId);
+    if (!item) return;
+    await createPurchaseOrder({
+      projectId: projects[0]?._id || projects[0]?.id,
+      vendorId: vendors[0]?._id || vendors[0]?.id,
       itemId,
-      projectId,
-      taskId,
-      quantity: qty,
-      issued_by: actorId,
-      issuedAt: new Date().toISOString().slice(0, 10),
-    };
-    setMaterialIssues((prev) => [...prev, issue]);
+      quantity,
+      unitPrice: cost || item.unitCost || item.unit_cost,
+      deliveryStatus: 'delivered',
+    });
+  }, [createPurchaseOrder, inventory, projects, vendors]);
 
-    const item = inventory.find((i) => i.id === itemId);
-    if (item) {
-      addFinanceRecord({
-        projectId,
-        cost_category: 'Material',
-        amount: qty * item.unit_cost,
-        description: `Material issue ${item.item_name} (${qty} ${item.uom})`,
+  // ─── Worker Actions ──────────────────────────────────
+  const assignWorkerToTask = useCallback(async (payload) => {
+    try {
+      const res = await workerAssignmentService.create({
+        workerId: payload.workerId,
+        taskId: payload.taskId,
+        fromDate: payload.from_date || payload.fromDate || new Date().toISOString().slice(0, 10),
+        toDate: payload.to_date || payload.toDate || new Date().toISOString().slice(0, 10),
       });
-    }
-
-    if (taskId) {
-      setTasks((prev) =>
-        prev.map((task) => {
-          if (task.id !== taskId) {
-            return task;
-          }
-
-          const existing = Array.isArray(task.materials_used) ? task.materials_used : [];
-          return {
-            ...task,
-            materials_used: [...existing, { itemId, quantity: qty }],
-          };
-        })
-      );
-    }
-
-    return issue;
-  }, [addFinanceRecord, inventory]);
-
-  const addProcurement = useCallback((itemId, quantity, cost) => {
-    const item = inventory.find((inv) => inv.id === itemId);
-    if (!item) {
-      return;
-    }
-
-    createPurchaseOrder(
-      {
-        projectId: projects[0]?.id,
-        vendorId: vendors[0]?.id,
-        itemId,
-        quantity,
-        unit_price: cost || item.unit_cost,
-        delivery_status: 'delivered',
-      },
-      currentUser?.id || 'system'
-    );
-  }, [createPurchaseOrder, currentUser?.id, inventory, projects, vendors]);
-
-  // Worker assignment and attendance
-  const assignWorkerToTask = useCallback((payload) => {
-    const assignment = {
-      id: makeId('wa'),
-      ...payload,
-    };
-
-    setWorkerAssignments((prev) => [...prev, assignment]);
-
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== payload.taskId) {
-          return task;
-        }
-
-        const existing = Array.isArray(task.workers_assigned) ? task.workers_assigned : [];
-        const workersAssigned = existing.includes(payload.workerId)
-          ? existing
-          : [...existing, payload.workerId];
-
-        return { ...task, workers_assigned: workersAssigned };
-      })
-    );
-
-    return assignment;
+      const assignment = normalize(res.data);
+      setWorkerAssignments((prev) => [...prev, assignment]);
+      // Refresh tasks to get updated workersAssigned
+      const tasksRes = await taskService.getAll();
+      setTasks(normalize(tasksRes.data || []));
+      return assignment;
+    } catch (err) { console.error('Error assigning worker:', err); return null; }
   }, []);
+
+  const recordAttendance = useCallback(async (payload, actorId) => {
+    try {
+      const res = await attendanceService.record({
+        workerId: payload.workerId,
+        projectId: payload.projectId,
+        date: payload.date,
+        status: payload.status,
+        hoursWorked: payload.hours_worked || payload.hoursWorked || 0,
+      });
+      const att = normalize(res.data);
+      setAttendanceRecords((prev) => {
+        const exists = prev.find(e => (e.id || e._id) === (att.id || att._id));
+        if (exists) return prev.map(e => ((e.id || e._id) === (att.id || att._id) ? att : e));
+        return [...prev, att];
+      });
+      // Refresh finance
+      const finRes = await financeService.getAll();
+      setFinanceRecords(normalize(finRes.data || []));
+      return att;
+    } catch (err) { console.error('Error recording attendance:', err); return null; }
+  }, []);
+
+  const updateWorkerAttendance = useCallback(async (workerId, status, date) => {
+    const defaultHours = status === 'Present' ? 8 : status === 'Half Day' ? 4 : 0;
+    const projectId = projects[0]?._id || projects[0]?.id;
+    return recordAttendance({ workerId, status, date, hoursWorked: defaultHours, projectId });
+  }, [projects, recordAttendance]);
 
   const calculateLaborCost = useCallback((worker, status, hoursWorked) => {
-    if (!worker || status === 'Absent') {
-      return 0;
-    }
-
-    if (worker.rate_type === 'Hourly') {
-      return worker.base_rate * Number(hoursWorked || 0);
-    }
-
-    if (status === 'Half Day') {
-      return worker.base_rate * 0.5;
-    }
-
-    return worker.base_rate;
+    if (!worker || status === 'Absent') return 0;
+    const rate = worker.baseRate || worker.base_rate || 0;
+    const rateType = worker.rateType || worker.rate_type;
+    if (rateType === 'Hourly') return rate * Number(hoursWorked || 0);
+    if (status === 'Half Day') return rate * 0.5;
+    return rate;
   }, []);
 
-  const recordAttendance = useCallback((payload, actorId) => {
-    const worker = workers.find((w) => w.id === payload.workerId);
-    const laborCost = calculateLaborCost(worker, payload.status, payload.hours_worked);
-
-    const attendance = {
-      id: makeId('att'),
-      ...payload,
-      labor_cost: laborCost,
-      recorded_by: actorId,
-    };
-
-    setAttendanceRecords((prev) => {
-      const exists = prev.find((entry) =>
-        entry.workerId === payload.workerId && sameDay(entry.date, payload.date)
-      );
-
-      if (exists) {
-        return prev.map((entry) =>
-          entry.id === exists.id
-            ? { ...entry, ...attendance, id: exists.id }
-            : entry
-        );
-      }
-
-      return [...prev, attendance];
-    });
-
-    setWorkers((prev) =>
-      prev.map((w) => {
-        if (w.id !== payload.workerId) {
-          return w;
-        }
-
-        const exists = (w.attendance || []).find((entry) => sameDay(entry.date, payload.date));
-        const nextAttendance = exists
-          ? w.attendance.map((entry) =>
-              sameDay(entry.date, payload.date)
-                ? { date: payload.date, status: payload.status, hours_worked: payload.hours_worked }
-                : entry
-            )
-          : [...(w.attendance || []), { date: payload.date, status: payload.status, hours_worked: payload.hours_worked }];
-
-        return { ...w, attendance: nextAttendance };
-      })
-    );
-
-    if (laborCost > 0) {
-      addFinanceRecord({
-        projectId: payload.projectId,
-        cost_category: 'Labor',
-        amount: laborCost,
-        description: `Attendance labor cost for ${worker?.name || payload.workerId}`,
-      });
-    }
-
-    if (payload.status === 'Absent') {
-      pushNotification({
-        type: 'worker_absence',
-        severity: 'high',
-        title: 'Worker absence logged',
-        message: `${worker?.name || 'Worker'} marked absent on ${payload.date}.`,
-      });
-    }
-
-    return attendance;
-  }, [addFinanceRecord, calculateLaborCost, pushNotification, workers]);
-
-  const updateWorkerAttendance = useCallback((workerId, status, date) => {
-    const worker = workers.find((w) => w.id === workerId);
-    const defaultHours = status === 'Present' ? 8 : status === 'Half Day' ? 4 : 0;
-    const projectId = projects[0]?.id;
-
-    recordAttendance(
-      {
-        workerId,
-        status,
-        date,
-        hours_worked: defaultHours,
-        projectId,
-      },
-      currentUser?.id || 'system'
-    );
-
-    return worker;
-  }, [currentUser?.id, projects, recordAttendance, workers]);
-
-  // Project team management
-  const assignProjectMember = useCallback((payload) => {
+  // ─── Project Team ────────────────────────────────────
+  const assignProjectMember = useCallback(async (payload) => {
     const alreadyAssigned = projectMembers.some(
       (pm) => pm.projectId === payload.projectId && pm.userId === payload.userId
     );
-
-    if (alreadyAssigned) {
-      return null;
-    }
-
-    const member = {
-      id: makeId('pm'),
-      ...payload,
-    };
-
-    setProjectMembers((prev) => [...prev, member]);
-    return member;
+    if (alreadyAssigned) return null;
+    try {
+      const res = await projectService.addMember(payload.projectId, {
+        userId: payload.userId,
+        memberRole: payload.project_role || payload.memberRole || 'Site_Engineer',
+      });
+      // Refresh projects to get updated members
+      const projRes = await projectService.getAll();
+      setProjects(normalize(projRes.data || []));
+      return normalize(res.data);
+    } catch (err) { console.error('Error assigning member:', err); return null; }
   }, [projectMembers]);
 
-  const removeProjectMember = useCallback((memberId) => {
-    setProjectMembers((prev) => prev.filter((member) => member.id !== memberId));
+  const removeProjectMember = useCallback(async (memberId) => {
+    // Find which project this member belongs to
+    const pm = projectMembers.find(m => (m.id || m._id) === memberId);
+    if (pm) {
+      try {
+        await projectService.removeMember(pm.projectId, memberId);
+        setProjectMembers((prev) => prev.filter((m) => (m.id || m._id) !== memberId));
+      } catch (err) { console.error('Error removing member:', err); }
+    }
+  }, [projectMembers]);
+
+  // ─── Worker CRUD ─────────────────────────────────────
+  const addWorker = useCallback(async (worker) => {
+    try {
+      const res = await workerService.create({
+        name: worker.name,
+        skillType: worker.skill_type || worker.skillType,
+        contact: worker.contact,
+        rateType: worker.rate_type || worker.rateType || 'Daily',
+        baseRate: Number(worker.base_rate || worker.baseRate),
+        salary: Number(worker.salary || 0),
+        projectIds: worker.projectId ? [worker.projectId] : [],
+      });
+      const w = normalize(res.data);
+      setWorkers((prev) => [...prev, w]);
+      return w;
+    } catch (err) { console.error('Error adding worker:', err); return null; }
   }, []);
 
-  // Worker management
-  const addWorker = useCallback((worker) => {
-    const newWorker = { id: makeId('worker'), attendance: [], salary: 0, ...worker };
-    setWorkers((prev) => [...prev, newWorker]);
-    return newWorker;
+  const updateWorker = useCallback(async (workerId, updates) => {
+    try {
+      const res = await workerService.update(workerId, updates);
+      setWorkers((prev) => prev.map((w) => ((w.id || w._id) === workerId ? normalize(res.data) : w)));
+    } catch (err) { console.error('Error updating worker:', err); }
   }, []);
 
-  const updateWorker = useCallback((workerId, updates) => {
-    setWorkers((prev) => prev.map((w) => (w.id === workerId ? { ...w, ...updates } : w)));
+  const deleteWorker = useCallback(async (workerId) => {
+    try {
+      await workerService.remove(workerId);
+      setWorkers((prev) => prev.filter((w) => (w.id || w._id) !== workerId));
+    } catch (err) { console.error('Error deleting worker:', err); }
   }, []);
 
-  const deleteWorker = useCallback((workerId) => {
-    setWorkers((prev) => prev.filter((w) => w.id !== workerId));
+  // ─── Inventory ───────────────────────────────────────
+  const addInventoryItem = useCallback(async (item) => {
+    try {
+      const res = await inventoryService.create({
+        itemName: item.item_name || item.itemName,
+        category: item.category,
+        uom: item.uom,
+        unitCost: Number(item.unit_cost || item.unitCost),
+        minStockQty: Number(item.min_stock_qty || item.minStockQty || 0),
+        currentStock: Number(item.current_stock || item.currentStock || 0),
+        supplier: item.supplier || '',
+      });
+      const newItem = normalize(res.data);
+      setInventory((prev) => [...prev, newItem]);
+      return newItem;
+    } catch (err) { console.error('Error adding item:', err); return null; }
   }, []);
 
-  // Inventory stock actions
-  const addInventoryItem = useCallback((item) => {
-    const newItem = { id: makeId('inv'), current_stock: 0, min_stock_qty: 0, ...item };
-    setInventory((prev) => [...prev, newItem]);
-    return newItem;
+  const addInventoryStock = useCallback(async (itemId, quantity) => {
+    try {
+      const res = await inventoryService.addStock(itemId, Number(quantity));
+      setInventory((prev) => prev.map((item) => ((item.id || item._id) === itemId ? normalize(res.data) : item)));
+    } catch (err) { console.error('Error adding stock:', err); }
   }, []);
 
-  const addInventoryStock = useCallback((itemId, quantity) => {
-    setInventory((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, current_stock: item.current_stock + Number(quantity) } : item
-      )
-    );
+  // ─── Leave Applications ──────────────────────────────
+  const applyLeave = useCallback(async (payload) => {
+    try {
+      const res = await leaveService.apply({
+        workerId: payload.workerId,
+        startDate: payload.start_date || payload.startDate,
+        endDate: payload.end_date || payload.endDate,
+        reason: payload.reason,
+        leaveType: payload.leave_type || payload.leaveType || 'Personal',
+      });
+      const leave = normalize(res.data);
+      setLeaveApplications((prev) => [...prev, leave]);
+      return leave;
+    } catch (err) { console.error('Error applying leave:', err); return null; }
   }, []);
 
-  // Leave application actions
-  const applyLeave = useCallback((payload) => {
-    const application = {
-      id: makeId('leave'),
-      status: 'Pending',
-      applied_at: new Date().toISOString().slice(0, 10),
-      reviewed_by: null,
-      reviewed_at: null,
-      ...payload,
-    };
-    setLeaveApplications((prev) => [...prev, application]);
-    return application;
+  const approveLeave = useCallback(async (leaveId, reviewerId) => {
+    try {
+      const res = await leaveService.approve(leaveId);
+      setLeaveApplications((prev) => prev.map((l) => ((l.id || l._id) === leaveId ? normalize(res.data) : l)));
+    } catch (err) { console.error('Error approving leave:', err); }
   }, []);
 
-  const approveLeave = useCallback((leaveId, reviewerId) => {
-    setLeaveApplications((prev) =>
-      prev.map((leave) =>
-        leave.id === leaveId
-          ? { ...leave, status: 'Approved', reviewed_by: reviewerId, reviewed_at: new Date().toISOString().slice(0, 10) }
-          : leave
-      )
-    );
+  const rejectLeave = useCallback(async (leaveId, reviewerId, rejectionReason = '') => {
+    try {
+      const res = await leaveService.reject(leaveId, rejectionReason);
+      setLeaveApplications((prev) => prev.map((l) => ((l.id || l._id) === leaveId ? normalize(res.data) : l)));
+    } catch (err) { console.error('Error rejecting leave:', err); }
   }, []);
 
-  const rejectLeave = useCallback((leaveId, reviewerId, rejection_reason = '') => {
-    setLeaveApplications((prev) =>
-      prev.map((leave) =>
-        leave.id === leaveId
-          ? { ...leave, status: 'Rejected', reviewed_by: reviewerId, reviewed_at: new Date().toISOString().slice(0, 10), rejection_reason }
-          : leave
-      )
-    );
-  }, []);
-
-  // Salary calculation helper
+  // ─── Salary ──────────────────────────────────────────
   const calculateSalary = useCallback((workerId, fromDate, toDate) => {
     const records = attendanceRecords.filter((entry) => {
-      if (entry.workerId !== workerId) return false;
+      if ((entry.workerId?._id || entry.workerId) !== workerId) return false;
       if (fromDate && entry.date < fromDate) return false;
       if (toDate && entry.date > toDate) return false;
       return true;
     });
-
     const totalDaysWorked = records.filter((r) => r.status === 'Present').length;
     const halfDays = records.filter((r) => r.status === 'Half Day').length;
-    const totalHours = records.reduce((sum, r) => sum + Number(r.hours_worked || 0), 0);
-    const totalSalary = records.reduce((sum, r) => sum + Number(r.labor_cost || 0), 0);
+    const totalHours = records.reduce((sum, r) => sum + Number(r.hoursWorked || r.hours_worked || 0), 0);
+    const totalSalary = records.reduce((sum, r) => sum + Number(r.laborCost || r.labor_cost || 0), 0);
     const absentDays = records.filter((r) => r.status === 'Absent').length;
+    return { totalDaysWorked, halfDays, totalHours, totalSalary, absentDays, absenceDeduction: 0, netSalary: totalSalary };
+  }, [attendanceRecords]);
 
-    const worker = workers.find((w) => w.id === workerId);
-    const absenceDeduction = worker
-      ? absentDays * (worker.rate_type === 'Daily' ? worker.base_rate : worker.base_rate * 8)
-      : 0;
-
-    return {
-      totalDaysWorked,
-      halfDays,
-      totalHours,
-      totalSalary,
-      absentDays,
-      absenceDeduction,
-      netSalary: totalSalary - absenceDeduction,
-    };
-  }, [attendanceRecords, workers]);
-
-  // Notification actions
-  const markNotificationRead = useCallback((id) => {
-    setNotifications((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)));
+  // ─── Notifications ───────────────────────────────────
+  const markNotificationRead = useCallback(async (id) => {
+    try {
+      if (String(id).startsWith('sys-') || String(id).startsWith('local-')) {
+        setNotifications((prev) => prev.map((n) => ((n.id || n._id) === id ? { ...n, read: true } : n)));
+        return;
+      }
+      await notificationService.markRead(id);
+      setNotifications((prev) => prev.map((n) => ((n.id || n._id) === id ? { ...n, read: true } : n)));
+    } catch (err) { console.error('Error marking notification read:', err); }
   }, []);
 
-  const markAllNotificationsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((note) => ({ ...note, read: true })));
+  const markAllNotificationsRead = useCallback(async () => {
+    try {
+      await notificationService.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) { console.error('Error marking all read:', err); }
   }, []);
 
-  const systemNotifications = useMemo(() => {
-    const lowStock = inventory
-      .filter((item) => item.current_stock < item.min_stock_qty)
-      .map((item) => ({
-        id: `sys-low-stock-${item.id}`,
-        type: 'low_stock',
-        severity: 'high',
-        title: `Low stock: ${item.item_name}`,
-        message: `${item.current_stock} ${item.uom} left (min ${item.min_stock_qty}).`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      }));
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  );
 
-    const overdue = tasks
-      .filter((task) => task.status !== 'Completed' && new Date(task.deadline || task.due_date) < new Date())
-      .map((task) => ({
-        id: `sys-overdue-${task.id}`,
-        type: 'overdue_tasks',
-        severity: 'high',
-        title: `Overdue task: ${task.task_name}`,
-        message: `Task deadline ${task.deadline || task.due_date} has passed.`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      }));
-
-    const budgetExceed = projects
-      .filter((project) => {
-        const spent = financeRecords
-          .filter((record) => record.projectId === project.id)
-          .reduce((sum, record) => sum + record.amount, 0);
-        return spent > project.budget;
-      })
-      .map((project) => ({
-        id: `sys-budget-${project.id}`,
-        type: 'budget_exceed',
-        severity: 'high',
-        title: `Budget exceeded: ${project.project_name}`,
-        message: `Project spending has exceeded planned budget.`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      }));
-
-    return [...lowStock, ...overdue, ...budgetExceed];
-  }, [financeRecords, inventory, projects, tasks]);
-
-  const allNotifications = useMemo(() => {
-    const map = new Map();
-    [...notifications, ...systemNotifications].forEach((note) => {
-      if (!map.has(note.id)) {
-        map.set(note.id, note);
+  // Provide a users array (from workers' userId refs + current user) for backward compatibility
+  const users = useMemo(() => {
+    const userMap = new Map();
+    workers.forEach(w => {
+      if (w.userId && typeof w.userId === 'object') {
+        userMap.set(w.userId._id || w.userId.id, { id: w.userId._id || w.userId.id, ...w.userId });
       }
     });
-    return Array.from(map.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [notifications, systemNotifications]);
-
-  const unreadNotificationCount = useMemo(() => {
-    return allNotifications.filter((note) => !note.read).length;
-  }, [allNotifications]);
+    return Array.from(userMap.values());
+  }, [workers]);
 
   const value = {
     currentUser,
@@ -673,6 +657,9 @@ export const AppProvider = ({ children }) => {
     login,
     logout,
     switchRole,
+    dataLoading,
+    dataError,
+    fetchAllData,
 
     users,
     projects,
@@ -687,7 +674,7 @@ export const AppProvider = ({ children }) => {
     attendanceRecords,
     projectMembers,
     leaveApplications,
-    notifications: allNotifications,
+    notifications,
     unreadNotificationCount,
 
     addProject,
@@ -719,6 +706,7 @@ export const AppProvider = ({ children }) => {
     assignWorkerToTask,
     recordAttendance,
     updateWorkerAttendance,
+    calculateLaborCost,
 
     addInventoryItem,
     addInventoryStock,

@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: siteos-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - CORS_ORIGIN=http://localhost
+    networks:
+      - siteos-network
+
+  frontend:
+    build:
+      context: ./construction-site-management
+      dockerfile: Dockerfile
+    container_name: siteos-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - siteos-network
+
+networks:
+  siteos-network:
+    driver: bridge
