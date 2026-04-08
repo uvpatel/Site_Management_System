@@ -3,8 +3,9 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import connectDB from "./src/db/connection.js";
+import env from "./src/config/env.js";
 
 // Route imports
 import authRoutes from "./src/routes/auth.routes.js";
@@ -22,20 +23,19 @@ import leaveRoutes from "./src/routes/leave.routes.js";
 import notificationRoutes from "./src/routes/notification.routes.js";
 import dashboardRoutes from "./src/routes/dashboard.routes.js";
 
-// Middleware imports
 import { errorHandler, notFound } from "./src/middleware/errorHandler.js";
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: env.corsOrigin,
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 
 // Rate limiting
 const limiter = rateLimit({
@@ -68,7 +68,7 @@ app.get("/", (req, res) => {
     success: true,
     message: "SiteOS API is running",
     version: "1.0.0",
-    environment: process.env.NODE_ENV,
+    environment: env.nodeEnv,
   });
 });
 
@@ -100,11 +100,11 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
-      console.log(`🚀 SiteOS API server running on port ${PORT} [${process.env.NODE_ENV}]`);
+    app.listen(env.port, () => {
+      console.log(`SiteOS API server running on port ${env.port} [${env.nodeEnv}]`);
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error.message);
+    console.error("Failed to start server:", error.message);
     process.exit(1);
   }
 };
