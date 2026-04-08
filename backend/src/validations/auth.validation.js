@@ -27,6 +27,18 @@ export const registerValidation = {
   }),
 };
 
+export const adminCreateUserValidation = {
+  body: Joi.object({
+    name: Joi.string().trim().min(2).max(80).required(),
+    email: Joi.string().email().lowercase().trim().required(),
+    password: password.required(),
+    phone: Joi.string().trim().allow("").max(20).optional(),
+    role: roleSchema.required(),
+    isActive: Joi.boolean().optional(),
+    verified: Joi.boolean().optional(),
+  }),
+};
+
 export const loginValidation = {
   body: Joi.object({
     email: Joi.string().email().lowercase().trim().required(),
