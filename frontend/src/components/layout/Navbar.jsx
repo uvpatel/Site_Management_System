@@ -7,11 +7,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useContext, useMemo } from 'react';
+import { useTheme } from '../../hooks/useTheme';
 import { AppContext } from '../../context/AppContext';
-import { Bell, LogOut, Search } from 'lucide-react';
+import { Bell, LogOut, Moon, Search, Sun } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { projects, tasks, workers, inventory, vendors, unreadNotificationCount } = useContext(AppContext);
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -121,6 +123,16 @@ const Navbar = () => {
               {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
             </span>
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-400 transition-colors hover:text-slate-50"
+          aria-label="Toggle theme"
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
         {/* User Menu */}

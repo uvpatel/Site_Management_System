@@ -44,14 +44,60 @@ export const AppProvider = ({ children }) => {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState(null);
 
-  // Helper to normalize API data (MongoDB _id → id)
-  const normalize = (item) => {
-    if (!item) return item;
+  const relationKeys = new Set([
+    'projectId',
+    'taskId',
+    'workerId',
+    'itemId',
+    'vendorId',
+    'assignedTo',
+    'attendanceId',
+    'procurementId',
+    'createdBy',
+  ]);
+  const relationArrayKeys = new Set(['workersAssigned', 'dependencies', 'projectIds']);
+
+  const toSnakeCase = (value) =>
+    value.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
+
+  const normalize = useCallback((item) => {
+    if (item == null) return item;
     if (Array.isArray(item)) return item.map(normalize);
-    const obj = { ...item };
+    if (typeof item !== 'object') return item;
+
+    const normalizedEntries = Object.entries(item).map(([key, value]) => [key, normalize(value)]);
+    const obj = Object.fromEntries(normalizedEntries);
+
     if (obj._id && !obj.id) obj.id = obj._id;
+
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+
+      if (relationArrayKeys.has(key) && Array.isArray(value)) {
+        const detailKey = `${key}Details`;
+        obj[detailKey] = value;
+        obj[key] = value.map((entry) => (entry && typeof entry === 'object' ? entry.id || entry._id : entry));
+      } else if (
+        relationKeys.has(key) &&
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        (value.id || value._id)
+      ) {
+        obj[`${key}Details`] = value;
+        obj[key] = value.id || value._id;
+      }
+    }
+
+    for (const [key, value] of Object.entries({ ...obj })) {
+      const snakeKey = toSnakeCase(key);
+      if (!(snakeKey in obj)) {
+        obj[snakeKey] = value;
+      }
+    }
+
     return obj;
-  };
+  }, []);
 
   // Fetch all data from API
   const fetchAllData = useCallback(async () => {
@@ -117,7 +163,7 @@ export const AppProvider = ({ children }) => {
     } finally {
       setDataLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, normalize]);
 
   // Auto-fetch data when token exists
   useEffect(() => {

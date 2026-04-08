@@ -87,14 +87,11 @@ export default function SignUp() {
     if (result.success) {
       setToast({
         type: 'success',
-        message: 'Account created! Please verify your email.',
+        message: 'Account created successfully.',
       });
-      
-      // Store email for verification page
-      sessionStorage.setItem('verificationEmail', formData.email);
-      
+
       setTimeout(() => {
-        navigate('/verify-email');
+        navigate('/');
       }, 1500);
     } else {
       setToast({

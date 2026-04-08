@@ -1,5 +1,7 @@
 import Joi from "joi";
 
+const emailSchema = Joi.string().email({ tlds: { allow: false } }).lowercase().trim();
+
 const password = Joi.string()
   .min(8)
   .max(128)
@@ -20,7 +22,7 @@ const roleSchema = Joi.string().valid(
 export const registerValidation = {
   body: Joi.object({
     name: Joi.string().trim().min(2).max(80).required(),
-    email: Joi.string().email().lowercase().trim().required(),
+    email: emailSchema.required(),
     password: password.required(),
     phone: Joi.string().trim().allow("").max(20).optional(),
     role: roleSchema.optional(),
@@ -30,7 +32,7 @@ export const registerValidation = {
 export const adminCreateUserValidation = {
   body: Joi.object({
     name: Joi.string().trim().min(2).max(80).required(),
-    email: Joi.string().email().lowercase().trim().required(),
+    email: emailSchema.required(),
     password: password.required(),
     phone: Joi.string().trim().allow("").max(20).optional(),
     role: roleSchema.required(),
@@ -41,7 +43,7 @@ export const adminCreateUserValidation = {
 
 export const loginValidation = {
   body: Joi.object({
-    email: Joi.string().email().lowercase().trim().required(),
+    email: emailSchema.required(),
     password: Joi.string().required(),
   }),
 };

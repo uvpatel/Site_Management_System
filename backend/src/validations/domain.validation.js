@@ -1,6 +1,7 @@
 import Joi from "joi";
 
 const objectId = Joi.string().hex().length(24);
+const permissiveEmail = Joi.string().email({ tlds: { allow: false } });
 
 export const idParamValidation = {
   params: Joi.object({
@@ -155,7 +156,7 @@ export const vendorValidation = {
   body: Joi.object({
     vendorName: Joi.string().trim().min(2).max(120).required(),
     contact: Joi.string().trim().allow("").max(20).optional(),
-    email: Joi.string().email().allow("").optional(),
+    email: permissiveEmail.allow("").optional(),
     address: Joi.string().trim().allow("").max(200).optional(),
     rating: Joi.number().min(0).max(5).optional(),
   }),

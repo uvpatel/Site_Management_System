@@ -1,41 +1,44 @@
-/**
- * App Component
- * Main application with routing setup
- * Integrates AuthProvider, AppProvider, ToastProvider, and Router configuration
- */
-
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/ui/ToastSystem';
 import { useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AppLayout } from './components/layout';
-import Dashboard from './pages/dashboard/Dashboard';
-import Projects from './pages/projects/Projects';
-import ProjectDetails from './pages/projects/ProjectDetails';
-import Tasks from './pages/tasks/Tasks';
-import Workforce from './pages/workforce/Workforce';
-import Inventory from './pages/inventory/Inventory';
-import Finance from './pages/finance/Finance';
-import VendorManagement from './pages/vendors/VendorManagement';
-import Procurement from './pages/procurement/Procurement';
-import MaterialIssue from './pages/inventory/MaterialIssue';
-import Assignments from './pages/tasks/Assignments';
-import Attendance from './pages/workforce/Attendance';
-import ProjectTeam from './pages/vendors/ProjectTeam';
-import WorkerPortal from './pages/worker/WorkerPortal';
-import Notifications from './pages/Notifications';
-import Reports from './pages/finance/Reports';
-import LeaveApplication from './pages/worker/LeaveApplication';
-import WorkerDashboard from './pages/worker/WorkerDashboard';
-import WorkerAttendance from './pages/worker/WorkerAttendance';
-import WorkerSalary from './pages/worker/WorkerSalary';
-import SignUp from './pages/auth/SignUp';
-import AuthLogin from './pages/auth/AuthLogin';
-import VerifyEmail from './pages/auth/VerifyEmail';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
+
+const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const Projects = lazy(() => import('./pages/projects/Projects'));
+const ProjectDetails = lazy(() => import('./pages/projects/ProjectDetails'));
+const Tasks = lazy(() => import('./pages/tasks/Tasks'));
+const Workforce = lazy(() => import('./pages/workforce/Workforce'));
+const Inventory = lazy(() => import('./pages/inventory/Inventory'));
+const Finance = lazy(() => import('./pages/finance/Finance'));
+const VendorManagement = lazy(() => import('./pages/vendors/VendorManagement'));
+const Procurement = lazy(() => import('./pages/procurement/Procurement'));
+const MaterialIssue = lazy(() => import('./pages/inventory/MaterialIssue'));
+const Assignments = lazy(() => import('./pages/tasks/Assignments'));
+const Attendance = lazy(() => import('./pages/workforce/Attendance'));
+const ProjectTeam = lazy(() => import('./pages/vendors/ProjectTeam'));
+const WorkerPortal = lazy(() => import('./pages/worker/WorkerPortal'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const Reports = lazy(() => import('./pages/finance/Reports'));
+const LeaveApplication = lazy(() => import('./pages/worker/LeaveApplication'));
+const WorkerDashboard = lazy(() => import('./pages/worker/WorkerDashboard'));
+const WorkerAttendance = lazy(() => import('./pages/worker/WorkerAttendance'));
+const WorkerSalary = lazy(() => import('./pages/worker/WorkerSalary'));
+const SignUp = lazy(() => import('./pages/auth/SignUp'));
+const AuthLogin = lazy(() => import('./pages/auth/AuthLogin'));
+const VerifyEmail = lazy(() => import('./pages/auth/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
+
+const AppFallback = () => (
+  <div className="flex min-h-screen items-center justify-center bg-slate-950">
+    <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-amber-500" />
+  </div>
+);
 
 function AppRoutes() {
   const { isAuthenticated, user } = useAuth();
@@ -90,7 +93,7 @@ function AppRoutes() {
       <Route
         path="/"
         element={
-          <ProtectedRoute allowedRoles={['Admin', 'Project_Manager', 'Site_Engineer']}>
+          <ProtectedRoute allowedRoles={['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper']}>
             <AppLayout />
           </ProtectedRoute>
         }
@@ -154,15 +157,19 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <ToastProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
-        </ToastProvider>
-      </AppProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <ToastProvider>
+            <Router>
+              <Suspense fallback={<AppFallback />}>
+                <AppRoutes />
+              </Suspense>
+            </Router>
+          </ToastProvider>
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

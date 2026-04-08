@@ -34,6 +34,13 @@ const ROLES = [
     color: 'bg-amber-500/10 border-amber-500',
   },
   {
+    id: 'Storekeeper',
+    label: 'Storekeeper',
+    description: 'Manage vendors, inventory & procurement',
+    icon: Hammer,
+    color: 'bg-cyan-500/10 border-cyan-500',
+  },
+  {
     id: 'Worker',
     label: 'Worker',
     description: 'View attendance & salary',

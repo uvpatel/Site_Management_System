@@ -40,7 +40,7 @@ const Sidebar = () => {
       label: 'Dashboard',
       path: '/',
       icon: LayoutDashboard,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
     },
     {
       label: 'Projects',
@@ -76,25 +76,25 @@ const Sidebar = () => {
       label: 'Inventory',
       path: '/inventory',
       icon: Package,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
     },
     {
       label: 'Vendors',
       path: '/vendors',
       icon: Truck,
-      roles: ['Admin', 'Project_Manager'],
+      roles: ['Admin', 'Project_Manager', 'Storekeeper'],
     },
     {
       label: 'Procurement',
       path: '/procurement',
       icon: ClipboardList,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
     },
     {
       label: 'Material Issue',
       path: '/material-issue',
       icon: ArrowLeftRight,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
     },
     {
       label: 'Project Team',
@@ -118,7 +118,7 @@ const Sidebar = () => {
       label: 'Notifications',
       path: '/notifications',
       icon: BellRing,
-      roles: ['Admin', 'Project_Manager', 'Site_Engineer'],
+      roles: ['Admin', 'Project_Manager', 'Site_Engineer', 'Storekeeper'],
     },
     {
       label: 'Reports',
